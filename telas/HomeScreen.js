@@ -10,18 +10,18 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho */}
+      {/* Cabeï¿½alho */}
       <View style={styles.header}>
         <Text style={styles.title}>Meus Agendamentos</Text>
       </View>
-    <text>ewqewqeqw</text>
+
       {/* Lista de Agendamentos */}
       <ScrollView style={styles.list}>
         {agendamentos.map((item) => (
           <TouchableOpacity 
             key={item.id} 
             style={styles.card}
-            onPress={() => navigation.navigate('Detalhes', { agendamento: item })}
+            onPress={() => navigation.navigate('Agendamento', { usuario: route.params.usuario })}
           >
             <Text style={styles.cardDate}>{item.data} ? {item.horario}</Text>
             <Text style={[
@@ -34,7 +34,7 @@ export default function HomeScreen({ navigation }) {
         ))}
       </ScrollView>
 
-      {/* Botão de Novo Agendamento */}
+      {/* Botï¿½o de Novo Agendamento */}
       <TouchableOpacity 
         style={styles.newButton}
         onPress={() => navigation.navigate('Agendamento')}

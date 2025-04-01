@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { buscarHorariosDisponiveis, criarAgendamento } from '../services/api';
-import { DatePickerModal } from 'react-native-paper-dates';
+import { criarAgendamento } from '../services/api';
+
 
 export default function Agendamento({ route, navigation }) {
   const [data, setData] = useState(new Date());
@@ -16,7 +16,7 @@ export default function Agendamento({ route, navigation }) {
       const disponiveis = await buscarHorariosDisponiveis(dataSelecionada);
       setHorarios(disponiveis);
     } catch (erro) {
-      Alert.alert('Erro', 'Falha ao buscar horários');
+      Alert.alert('Erro', 'Falha ao buscar horÃ¡rios');
     }
   };
 
@@ -24,13 +24,14 @@ export default function Agendamento({ route, navigation }) {
     try {
       await criarAgendamento({
         usuarioId: usuario.id,
+        servico_id: 1, // VocÃª pode adicionar um seletor de serviÃ§os
         data: data.toISOString().split('T')[0],
         horario: horarioSelecionado
       });
-      Alert.alert('Sucesso', 'Agendamento realizado!');
+      Alert.alert('Sucesso', 'Agendamento criado!');
       navigation.goBack();
     } catch (erro) {
-      Alert.alert('Erro', 'Falha ao agendar');
+      Alert.alert('Erro', 'Falha ao criar agendamento');
     }
   };
 
@@ -60,7 +61,7 @@ export default function Agendamento({ route, navigation }) {
      />
       )}
 
-      <Text style={styles.subtitulo}>Horários Disponíveis:</Text>
+      <Text style={styles.subtitulo}>Horarios Disponiveis:</Text>
 
       <FlatList
         data={horarios}

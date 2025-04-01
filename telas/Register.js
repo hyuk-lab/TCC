@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { criarUsuario } from '../services/api';
+import { useNavigation } from '@react-navigation/native';
 
-export default function Cadastro({ navigation }) {
+export default function Cadastro() { // â† Recebe navigation como prop
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
-
+  const navigation = useNavigation();
   const handleCadastro = async () => {
     if (senha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      Alert.alert('Erro', 'As senhas nÃ£o coincidem');
       return;
     }
 
@@ -63,8 +64,8 @@ export default function Cadastro({ navigation }) {
         onChangeText={setConfirmarSenha}
       />
 
-      <TouchableOpacity 
-        style={styles.botao} 
+      <TouchableOpacity
+        style={styles.botao}
         onPress={handleCadastro}
         disabled={carregando}
       >
@@ -74,7 +75,7 @@ export default function Cadastro({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Já tem conta? Faça login</Text>
+        <Text style={styles.link}>JÃ¡ tem conta? FaÃ§a login</Text>
       </TouchableOpacity>
     </View>
   );

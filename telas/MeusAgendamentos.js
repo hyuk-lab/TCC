@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Alert } from 'react-native';
-import { listarMeusAgendamentos, cancelarAgendamento } from '../services/api';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { listarMeusAgendamentos, cancelarAgendamento, carregarAgendamentos } from '../services/api';
 
-export default function MeusAgendamentos({ navigation, route }) {
+
+
+export default function MeusAgendamentos({ route }) {
   const [agendamentos, setAgendamentos] = useState([]);
   const [recarregando, setRecarregando] = useState(false);
-  const usuario = route.params?.usuario;
+  const navigation = useNavigation();
+  const usuario = route?.params?.usuario;
 
   const carregarAgendamentos = async () => {
     try {
-      setRecarregando(true);
-      const dados = await listarMeusAgendamentos(usuario.id);
-      setAgendamentos(dados);
-    } catch (erro) {
-      Alert.alert('Erro', 'Falha ao carregar agendamentos');
-    } finally {
-      setRecarregando(false);
+      const agendamentos = await listarMeusAgendamentos();
+      setAgendamentos(agendamentos);
+    } catch (error) {
+      // Trate o erro
     }
   };
 
@@ -26,14 +27,21 @@ export default function MeusAgendamentos({ navigation, route }) {
       carregarAgendamentos();
       Alert.alert('Sucesso', 'Agendamento cancelado');
     } catch (erro) {
-      Alert.alert('Erro', 'Falha ao cancelar');
+      Alert.alert('Erro', 'Falha ao cancelar agendamento');
     }
   };
 
   useEffect(() => {
+    if (usuario) {
+      carregarAgendamentos();
+    } else {
+      Alert.alert('Erro', 'Usuário não encontrado');
+      navigation.navigate('Login');
+    }
+
     const unsubscribe = navigation.addListener('focus', carregarAgendamentos);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, usuario]);
 
   return (
     <View style={styles.container}>

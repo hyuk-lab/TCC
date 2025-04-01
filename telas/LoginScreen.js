@@ -1,30 +1,34 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { fazerLogin } from '../services/api';
+import { fazerLogin, setAuthToken } from '../services/api';
+
 
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
 
-  if (usuario.tipo === 'admin') {
-    navigation.navigate('AdminHome');
-  } else {
-    navigation.navigate('MeusAgendamentos');
-  }
 
   const handleLogin = async () => {
     try {
-      setCarregando(true);
       const usuario = await fazerLogin(email, senha);
-      navigation.navigate('MeusAgendamentos', { usuario });
+      if (usuario.tipo === 'admin') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AdminHome', params: { usuario } }]
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home', params: { usuario } }]
+        });
+      }
     } catch (erro) {
-      Alert.alert('Erro', erro.message);
-    } finally {
-      setCarregando(false);
+      // Tratamento de erro
     }
   };
-
+  
   return (
     <View style={styles.container}>
       <Text style={styles.titulo}>CleanWay</Text>
