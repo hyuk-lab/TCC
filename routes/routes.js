@@ -1,46 +1,31 @@
 // routes/routes.js
-import { createStackNavigator } from '@react-navigation/stack';
-import { NavigationContainer } from '@react-navigation/native';
-import React from 'react';
+import { createStackNavigator } from "@react-navigation/stack";
+import { NavigationContainer } from "@react-navigation/native";
+import React from "react";
 
 // Importe todas as telas
-import Login from '../telas/LoginScreen';
-import Cadastro from '../telas/Register';
-import Home from '../telas/HomeScreen';
-import Agendamento from '../telas/Agendamento';
-import AdminHome from '../telas/AdminHome';
-import Detalhes from '../telas/Detalhes'; // Voc√™ precisar√° criar esta tela
+import LoginScreen from "../telas/LoginScreen";
+import CadastroScreen from "../telas/CadastroScreen";
+import MeusAgendamentos from "../telas/MeusAgendamentos";
+import AgendamentoScreen from "../telas/AgendamentoScreen";
+import AdminScreen from "../telas/AdminScreen";
 
 const Stack = createStackNavigator();
 
 function AppRoutes() {
   return (
     <NavigationContainer>
-      <Stack.Navigator
-        initialRouteName="Login"
-        screenOptions={{
-          headerShown: false
-        }}
-      >
-        {/* Telas de Autentica√ß√£o */}
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="Cadastro" component={Cadastro} />
+      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+        {/* AutenticaÁ„o */}
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Cadastro" component={CadastroScreen} />
 
-        {/* Telas do Usu√°rio Comum */}
-        <Stack.Screen 
-          name="Home" 
-          component={Home}
-          options={{ gestureEnabled: false }} // Impede voltar para login
-        />
-        <Stack.Screen name="Agendamento" component={Agendamento} />
-        <Stack.Screen name="Detalhes" component={Detalhes} />
+        {/* Usu·rio */}
+        <Stack.Screen name="MeusAgendamentos" component={MeusAgendamentos} />
+        <Stack.Screen name="Agendamento" component={AgendamentoScreen} />
 
-        {/* Telas do Administrador */}
-        <Stack.Screen 
-          name="AdminHome" 
-          component={AdminHome}
-          options={{ gestureEnabled: false }}
-        />
+        {/* Admin */}
+        <Stack.Screen name="Admin" component={AdminScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

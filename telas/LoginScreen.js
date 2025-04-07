@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { fazerLogin } from '../services/api';
-import { fazerLogin, setAuthToken } from '../services/api';
+
 
 
 export default function Login({ navigation }) {

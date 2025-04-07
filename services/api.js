@@ -1,5 +1,5 @@
 // services/api.js
-const BASE_URL = 'http://172.16.11.13:3000';
+const BASE_URL = 'http://26.215.35.92:3000';
 
 // Função auxiliar para lidar com respostas da API
 const handleResponse = async (response) => {

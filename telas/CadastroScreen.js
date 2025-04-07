@@ -1,29 +1,38 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { criarUsuario } from '../services/api';
-import { useNavigation } from '@react-navigation/native';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
+import { criarUsuario } from "../services/api";
+import { useNavigation } from "@react-navigation/native";
 
-export default function Cadastro() { // ← Recebe navigation como prop
-  const [nome, setNome] = useState('');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [carregando, setCarregando] = useState(false);
+export default function Cadastro() {
   const navigation = useNavigation();
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [telefone, setTelefone] = useState("");
+
   const handleCadastro = async () => {
     if (senha !== confirmarSenha) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      Alert.alert("Erro", "As senhas não coincidem");
       return;
     }
 
     try {
       setCarregando(true);
       await criarUsuario({ nome, email, senha });
-      Alert.alert('Sucesso', 'Cadastro realizado!', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
+      Alert.alert("Sucesso", "Cadastro realizado!", [
+        { text: "OK", onPress: () => navigation.navigate("Login") },
       ]);
     } catch (erro) {
-      Alert.alert('Erro', erro.message);
+      Alert.alert("Erro", erro.message);
     } finally {
       setCarregando(false);
     }
@@ -50,6 +59,14 @@ export default function Cadastro() { // ← Recebe navigation como prop
 
       <TextInput
         style={styles.input}
+        placeholder="Telefone"
+        value={telefone}
+        onChangeText={setTelefone}
+        keyboardType="phone-pad"
+      />
+
+      <TextInput
+        style={styles.input}
         placeholder="Senha"
         secureTextEntry
         value={senha}
@@ -70,11 +87,11 @@ export default function Cadastro() { // ← Recebe navigation como prop
         disabled={carregando}
       >
         <Text style={styles.textoBotao}>
-          {carregando ? 'Cadastrando...' : 'Cadastrar'}
+          {carregando ? "Cadastrando..." : "Cadastrar"}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity onPress={() => navigation.navigate("Login")}>
         <Text style={styles.link}>Já tem conta? Faça login</Text>
       </TouchableOpacity>
     </View>
@@ -84,42 +101,42 @@ export default function Cadastro() { // ← Recebe navigation como prop
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
-    backgroundColor: '#f5f5f5'
+    backgroundColor: "#f5f5f5",
   },
   titulo: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E86AB',
+    fontWeight: "bold",
+    color: "#2E86AB",
     marginBottom: 20,
-    textAlign: 'center'
+    textAlign: "center",
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
-    backgroundColor: '#fff'
+    backgroundColor: "#fff",
   },
   botao: {
     height: 50,
-    backgroundColor: '#2E86AB',
+    backgroundColor: "#2E86AB",
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
   },
   textoBotao: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   link: {
-    color: '#2E86AB',
+    color: "#2E86AB",
     marginTop: 20,
-    textAlign: 'center'
-  }
+    textAlign: "center",
+  },
 });
