@@ -1,0 +1,110 @@
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { fazerLogin } from '../services/api';
+
+
+
+export default function Login({ navigation }) {
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+
+  const handleLogin = async () => {
+    try {
+      const usuario = await fazerLogin(email, senha);
+      if (usuario.tipo === 'admin') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'AdminHome', params: { usuario } }]
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Agendamento', params: { usuario } }]
+        });
+      }
+    } catch (erro) {
+      // Tratamento de erro
+    }
+  };
+  
+  return (
+    <View style={styles.container}>
+      <Text style={styles.titulo}>CleanWay</Text>
+      
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Senha"
+        secureTextEntry
+        value={senha}
+        onChangeText={setSenha}
+      />
+
+      <TouchableOpacity 
+        style={styles.botao} 
+        onPress={handleLogin}
+        disabled={carregando}
+      >
+        <Text style={styles.textoBotao}>
+          {carregando ? 'Carregando...' : 'Entrar'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('Cadastro')}>
+        <Text style={styles.link}>Criar conta</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5'
+  },
+  titulo: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#2E86AB',
+    marginBottom: 30,
+    textAlign: 'center'
+  },
+  input: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
+    backgroundColor: '#fff'
+  },
+  botao: {
+    height: 50,
+    backgroundColor: '#2E86AB',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10
+  },
+  textoBotao: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16
+  },
+  link: {
+    color: '#2E86AB',
+    marginTop: 20,
+    textAlign: 'center'
+  }
+});
