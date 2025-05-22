@@ -1,31 +1,63 @@
-// routes/routes.js
 import { createStackNavigator } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
 import React from "react";
-
-// Importe todas as telas
+import { TouchableOpacity } from "react-native"; // Adicione esta linha
+import { MaterialIcons } from '@expo/vector-icons'; // Adicione esta linha
 import LoginScreen from "../telas/LoginScreen";
 import CadastroScreen from "../telas/CadastroScreen";
 import MeusAgendamentos from "../telas/MeusAgendamentos";
 import AgendamentoScreen from "../telas/AgendamentoScreen";
-import AdminScreen from "../telas/AdminScreen";
 
 const Stack = createStackNavigator();
 
 function AppRoutes() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        {/* Autenticação */}
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Cadastro" component={CadastroScreen} />
+      <Stack.Navigator initialRouteName="Login">
+        {/* AutenticaÃ§Ã£o */}
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Cadastro" 
+          component={CadastroScreen} 
+          options={{ headerShown: false }}
+        />
 
-        {/* Usuário */}
-        <Stack.Screen name="MeusAgendamentos" component={MeusAgendamentos} />
-        <Stack.Screen name="Agendamento" component={AgendamentoScreen} />
-
-        {/* Admin */}
-        <Stack.Screen name="Admin" component={AdminScreen} />
+        {/* Fluxo principal */}
+        <Stack.Screen 
+          name="MeusAgendamentos" 
+          component={MeusAgendamentos} 
+          options={({ navigation }) => ({ 
+            title: 'Meus Agendamentos',
+            headerRight: () => (
+              <TouchableOpacity 
+                style={{ marginRight: 15 }}
+                onPress={() => navigation.navigate('Agendamento')}
+              >
+                <MaterialIcons name="add" size={24} color="#2E86AB" />
+              </TouchableOpacity>
+            ),
+            headerLeft: null // Remove o botÃ£o de voltar
+          })}
+        />
+        <Stack.Screen 
+          name="Agendamento" 
+          component={AgendamentoScreen} 
+          options={{ 
+            title: 'Novo Agendamento',
+            headerLeft: () => (
+              <TouchableOpacity 
+                style={{ marginLeft: 15 }}
+                onPress={() => navigation.goBack()}
+              >
+                <MaterialIcons name="arrow-back" size={24} color="#2E86AB" />
+              </TouchableOpacity>
+            )
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

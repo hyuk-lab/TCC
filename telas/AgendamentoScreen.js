@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
   Alert,
   ActivityIndicator
 } from 'react-native';
@@ -29,20 +29,19 @@ export default function AgendamentoScreen() {
         setLoading(true);
         setError(null);
         const dataFormatada = date.toISOString().split('T')[0];
-        
+
         const [servicosData, horariosData] = await Promise.all([
           listarServicos(),
           buscarHorariosDisponiveis(dataFormatada)
         ]);
-        
-        // Validação dos serviços
+
         const servicosValidados = servicosData.map(servico => ({
           id: servico.id || 0,
           nome: servico.nome || 'Serviço sem nome',
           preco: servico.preco ? parseFloat(servico.preco) : 0,
           duracao: servico.duracao || '00:00'
         }));
-        
+
         setServicos(servicosValidados);
         setHorarios(horariosData);
       } catch (erro) {
@@ -52,7 +51,7 @@ export default function AgendamentoScreen() {
         setLoading(false);
       }
     };
-    
+
     carregarDados();
   }, [date]);
 
@@ -65,15 +64,15 @@ export default function AgendamentoScreen() {
     try {
       setLoading(true);
       const dataFormatada = date.toISOString().split('T')[0];
-      
+
       await criarAgendamento({
         data: dataFormatada,
         horario: horarioSelecionado,
         servico_id: servicoSelecionado.id
       });
-      
+
       Alert.alert('Sucesso', 'Agendamento confirmado!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
+        { text: 'OK', onPress: () => navigation.navigate('MeusAgendamentos') }
       ]);
     } catch (erro) {
       console.error('Erro ao agendar:', erro);
@@ -101,9 +100,8 @@ export default function AgendamentoScreen() {
   );
 
   const renderServico = ({ item }) => {
-    // Formatação segura do preço
     const precoFormatado = item.preco?.toFixed ? item.preco.toFixed(2) : '0.00';
-    
+
     return (
       <TouchableOpacity
         style={[
@@ -129,8 +127,14 @@ export default function AgendamentoScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>AGENDAMENTO</Text>
-      
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={24} color="#2E86AB" />
+        </TouchableOpacity>
+        <Text style={styles.header}>Novo Agendamento</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
       <Calendar
         current={date.toISOString().split('T')[0]}
         minDate={new Date().toISOString().split('T')[0]}
@@ -154,10 +158,10 @@ export default function AgendamentoScreen() {
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
-              setDate(new Date(date.getTime())); // Força recarregar
+              setDate(new Date(date.getTime()));
               setError(null);
             }}
           >
@@ -225,12 +229,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   header: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2E86AB',
-    marginBottom: 20,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   section: {
     marginVertical: 15,

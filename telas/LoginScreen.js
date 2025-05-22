@@ -2,30 +2,25 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { fazerLogin } from '../services/api';
 
-
-
 export default function Login({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
 
-
   const handleLogin = async () => {
     try {
+      setCarregando(true);
       const usuario = await fazerLogin(email, senha);
-      if (usuario.tipo === 'admin') {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'AdminHome', params: { usuario } }]
-        });
-      } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Agendamento', params: { usuario } }]
-        });
-      }
+      
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MeusAgendamentos', params: { usuario } }]
+      });
+      
     } catch (erro) {
-      // Tratamento de erro
+      Alert.alert('Erro', erro.message || 'Falha no login. Verifique suas credenciais.');
+    } finally {
+      setCarregando(false);
     }
   };
   
@@ -39,6 +34,7 @@ export default function Login({ navigation }) {
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
+        autoCapitalize="none"
       />
 
       <TextInput

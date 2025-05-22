@@ -8,7 +8,8 @@ import {
   RefreshControl,
   Alert,
   Modal,
-  ScrollView
+  ScrollView,
+  SafeAreaView
 } from 'react-native';
 import { 
   listarMeusAgendamentos, 
@@ -17,10 +18,11 @@ import {
   listarServicos,
   alterarAgendamento
 } from '../services/api';
-import { Calendar } from 'react-native-calendars';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-export default function MeusAgendamentos({ route }) {
+export default function MeusAgendamentos() {
+  const navigation = useNavigation();
   const [agendamentos, setAgendamentos] = useState([]);
   const [recarregando, setRecarregando] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(false);
@@ -30,7 +32,6 @@ export default function MeusAgendamentos({ route }) {
   const [novoHorario, setNovoHorario] = useState('');
   const [novoServico, setNovoServico] = useState('');
 
-  // Carrega agendamentos do usuário
   const carregarAgendamentos = async () => {
     try {
       setRecarregando(true);
@@ -43,7 +44,6 @@ export default function MeusAgendamentos({ route }) {
     }
   };
 
-  // Carrega serviços disponíveis
   const carregarServicos = async () => {
     try {
       const dados = await listarServicos();
@@ -53,27 +53,24 @@ export default function MeusAgendamentos({ route }) {
     }
   };
 
-  // Carrega horários disponíveis para uma data
-  const carregarHorariosDisponiveis = async (data) => {
+  const carregarHorariosDisponiveis = async (data, agendamentoId = null) => {
     try {
-      const dados = await buscarHorariosDisponiveis(data);
+      const dados = await buscarHorariosDisponiveis(data, agendamentoId);
       setHorariosDisponiveis(dados);
     } catch (erro) {
       Alert.alert('Erro', erro.message || 'Falha ao carregar horários');
     }
   };
 
-  // Abre modal para edição
   const abrirModalEdicao = async (agendamento) => {
     setAgendamentoEditando(agendamento);
     setNovoHorario(agendamento.horario);
     setNovoServico(agendamento.servico_id);
-    await carregarHorariosDisponiveis(agendamento.data);
+    await carregarHorariosDisponiveis(agendamento.data, agendamento.id);
     await carregarServicos();
     setModalVisivel(true);
   };
 
-  // Salva alterações no agendamento
   const salvarAlteracoes = async () => {
     try {
       if (!agendamentoEditando) return;
@@ -91,8 +88,7 @@ export default function MeusAgendamentos({ route }) {
     }
   };
 
-  // Cancela agendamento
-  const cancelarAgendamento = async (id) => {
+  const handleCancelarAgendamento = async (id) => {
     try {
       await cancelarAgendamento(id);
       Alert.alert('Sucesso', 'Agendamento cancelado!');
@@ -107,68 +103,80 @@ export default function MeusAgendamentos({ route }) {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>MEUS AGENDAMENTOS</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.titulo}>Meus Agendamentos</Text>
+        <TouchableOpacity 
+          style={styles.novoAgendamentoBtn}
+          onPress={() => navigation.navigate('Agendamento')}
+        >
+          <MaterialIcons name="add" size={24} color="#2E86AB" />
+        </TouchableOpacity>
+      </View>
 
-      <FlatList
-        data={agendamentos}
-        keyExtractor={(item) => item.id.toString()}
-        refreshControl={
-          <RefreshControl
-            refreshing={recarregando}
-            onRefresh={carregarAgendamentos}
-            colors={['#2E86AB']}
-          />
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <MaterialIcons name="event" size={24} color="#2E86AB" />
-              <Text style={styles.servico}>{item.servico_nome}</Text>
-              <View style={[
-                styles.statusBadge,
-                item.status === 'cancelado' && styles.statusCancelado,
-                item.status === 'confirmado' && styles.statusConfirmado
-              ]}>
-                <Text style={styles.statusText}>{item.status}</Text>
+      {agendamentos.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Nenhum agendamento encontrado</Text>
+          <Text style={styles.emptySubtext}>Toque no botão + para criar um novo agendamento</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={agendamentos}
+          keyExtractor={(item) => item.id.toString()}
+          refreshControl={
+            <RefreshControl
+              refreshing={recarregando}
+              onRefresh={carregarAgendamentos}
+              colors={['#2E86AB']}
+            />
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="event" size={24} color="#2E86AB" />
+                <Text style={styles.servico}>{item.servico_nome}</Text>
+                <View style={[
+                  styles.statusBadge,
+                  item.status === 'cancelado' && styles.statusCancelado,
+                  item.status === 'confirmado' && styles.statusConfirmado
+                ]}>
+                  <Text style={styles.statusText}>{item.status}</Text>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.cardBody}>
-              <Text style={styles.data}>
-                <MaterialIcons name="calendar-today" size={16} /> {item.data}
-              </Text>
-              <Text style={styles.horario}>
-                <MaterialIcons name="access-time" size={16} /> {item.horario}
-              </Text>
-              <Text style={styles.preco}>
-                R$ {item.servico_preco.toFixed(2)}
-              </Text>
-            </View>
-
-            {item.status === 'pendente' && (
-              <View style={styles.botoesAcao}>
-                <TouchableOpacity 
-                  style={styles.botaoEditar}
-                  onPress={() => abrirModalEdicao(item)}
-                >
-                  <Text style={styles.textoBotao}>ALTERAR</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.botaoCancelar}
-                  onPress={() => cancelarAgendamento(item.id)}
-                >
-                  <Text style={styles.textoBotao}>CANCELAR</Text>
-                </TouchableOpacity>
+              <View style={styles.cardBody}>
+                <Text style={styles.data}>
+                  <MaterialIcons name="calendar-today" size={16} /> {item.data}
+                </Text>
+                <Text style={styles.horario}>
+                  <MaterialIcons name="access-time" size={16} /> {item.horario}
+                </Text>
+                <Text style={styles.preco}>
+                  R$ {item.servico_preco.toFixed(2)}
+                </Text>
               </View>
-            )}
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.listaVazia}>Nenhum agendamento encontrado</Text>
-        }
-      />
+
+              {item.status === 'pendente' && (
+                <View style={styles.botoesAcao}>
+                  <TouchableOpacity 
+                    style={styles.botaoEditar}
+                    onPress={() => abrirModalEdicao(item)}
+                  >
+                    <Text style={styles.textoBotao}>ALTERAR</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.botaoCancelar}
+                    onPress={() => handleCancelarAgendamento(item.id)}
+                  >
+                    <Text style={styles.textoBotao}>CANCELAR</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        />
+      )}
 
       {/* Modal de Edição */}
       <Modal
@@ -202,14 +210,19 @@ export default function MeusAgendamentos({ route }) {
             <ScrollView horizontal style={styles.horariosContainer}>
               {horariosDisponiveis.map(horario => (
                 <TouchableOpacity
-                  key={horario}
+                  key={horario.hora}
                   style={[
                     styles.horarioItem,
-                    novoHorario === horario && styles.horarioSelecionado
+                    novoHorario === horario.hora && styles.horarioSelecionado,
+                    horario.status === 'ocupado' && styles.horarioOcupado
                   ]}
-                  onPress={() => setNovoHorario(horario)}
+                  onPress={() => horario.status === 'disponivel' && setNovoHorario(horario.hora)}
+                  disabled={horario.status === 'ocupado'}
                 >
-                  <Text>{horario}</Text>
+                  <Text>{horario.hora}</Text>
+                  <Text style={styles.horarioStatus}>
+                    {horario.status === 'disponivel' ? 'Disponível' : 'Ocupado'}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -232,28 +245,53 @@ export default function MeusAgendamentos({ route }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: '#F8F9FA'
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#2E86AB',
   },
   titulo: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2E86AB',
-    marginBottom: 20,
+    color: 'white',
+    textAlign: 'center'
+  },
+  novoAgendamentoBtn: {
+    padding: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#555',
+    marginBottom: 10,
+    textAlign: 'center'
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#777',
     textAlign: 'center'
   },
   card: {
     backgroundColor: 'white',
     borderRadius: 10,
     padding: 16,
-    marginBottom: 12,
+    margin: 16,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -333,11 +371,6 @@ const styles = StyleSheet.create({
   textoBotao: {
     fontWeight: 'bold'
   },
-  listaVazia: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#777'
-  },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -370,7 +403,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 5
+    borderRadius: 5,
+    minWidth: 120
   },
   servicoSelecionado: {
     borderColor: '#2E86AB',
@@ -384,11 +418,21 @@ const styles = StyleSheet.create({
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 5
+    borderRadius: 5,
+    minWidth: 80,
+    alignItems: 'center'
   },
   horarioSelecionado: {
     borderColor: '#2E86AB',
     backgroundColor: '#E3F2FD'
+  },
+  horarioOcupado: {
+    backgroundColor: '#FFEBEE'
+  },
+  horarioStatus: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 5
   },
   modalBotoes: {
     flexDirection: 'row',

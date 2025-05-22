@@ -38,7 +38,7 @@ const initializeDatabase = async () => {
       user: dbConfig.user,
       password: dbConfig.password
     });
-    
+
     await tempConn.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
     await tempConn.end();
 
@@ -48,7 +48,7 @@ const initializeDatabase = async () => {
     // Cria tabelas
     await createTables();
     await seedInitialData();
-    
+
     console.log('✅ Banco de dados inicializado com sucesso');
   } catch (error) {
     console.error('❌ Erro ao inicializar banco de dados:', error);
@@ -93,14 +93,14 @@ const createTables = async () => {
 
 const seedInitialData = async () => {
   const [users] = await pool.query('SELECT * FROM usuarios LIMIT 1');
-  
+
   if (users.length === 0) {
     const senhaAdmin = bcrypt.hashSync('admin123', 8);
     await pool.query(
       'INSERT INTO usuarios (nome, email, senha, telefone, tipo) VALUES (?, ?, ?, ?, ?)',
       ['Admin', 'admin@cleanway.com', senhaAdmin, '11999999999', 'admin']
     );
-    
+
     await pool.query(`
       INSERT INTO servicos (nome, preco, duracao) VALUES 
       ('Lavagem Simples', 30.00, '30 minutos'),
@@ -113,13 +113,13 @@ const seedInitialData = async () => {
 // Middlewares customizados
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
 
   const token = authHeader.split(' ')[1];
-  
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.id;
@@ -135,7 +135,7 @@ const isAdmin = async (req, res, next) => {
       'SELECT tipo FROM usuarios WHERE id = ?',
       [req.userId]
     );
-    
+
     if (user[0].tipo !== 'admin') {
       return res.status(403).json({ error: 'Acesso restrito a administradores' });
     }
@@ -149,7 +149,7 @@ const isAdmin = async (req, res, next) => {
 app.post('/login', async (req, res) => {
   try {
     const { email, senha } = req.body;
-    
+
     if (!email || !senha) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
@@ -188,7 +188,7 @@ app.post('/login', async (req, res) => {
 app.post('/usuarios', async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
-    
+
     if (!nome || !email || !senha) {
       return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
     }
@@ -203,7 +203,7 @@ app.post('/usuarios', async (req, res) => {
     }
 
     const hashedPassword = bcrypt.hashSync(senha, 8);
-    
+
     await pool.query(
       'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
       [nome, email, hashedPassword]
@@ -231,7 +231,7 @@ app.get('/servicos', async (req, res) => {
 app.get('/horarios-disponiveis', async (req, res) => {
   try {
     const { data } = req.query;
-    
+
     if (!data || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
       return res.status(400).json({ error: 'Formato de data inválido. Use YYYY-MM-DD' });
     }
@@ -259,47 +259,50 @@ app.get('/horarios-disponiveis', async (req, res) => {
   }
 });
 
+
 // Rotas de Agendamentos
-app.post('/agendamentos', authenticate, async (req, res) => {
+app.get('/agendamentos/meus', authenticate, async (req, res) => {
   try {
-    const { servico_id, data, horario } = req.body;
-    
-    if (!servico_id || !data || !horario) {
-      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
-    }
+    const [agendamentos] = await pool.query(`
+      SELECT a.*, s.nome as servico_nome, s.preco as servico_preco
+      FROM agendamentos a
+      JOIN servicos s ON a.servico_id = s.id
+      WHERE a.usuario_id = ?
+      ORDER BY a.data, a.horario
+    `, [req.userId]);
 
-    // Verifica disponibilidade
-    const [existing] = await pool.query(
-      `SELECT id FROM agendamentos 
-       WHERE data = ? AND horario = ? AND status != 'cancelado'`,
-      [data, horario]
-    );
-
-    if (existing.length > 0) {
-      return res.status(400).json({ error: 'Horário já ocupado' });
-    }
-
-    // Cria agendamento
-    const [result] = await pool.query(
-      `INSERT INTO agendamentos 
-       (usuario_id, servico_id, data, horario) 
-       VALUES (?, ?, ?, ?)`,
-      [req.userId, servico_id, data, horario]
-    );
-
-    // Retorna agendamento criado
-    const [agendamento] = await pool.query(
-      `SELECT a.*, s.nome as servico_nome, s.preco as servico_preco
-       FROM agendamentos a
-       JOIN servicos s ON a.servico_id = s.id
-       WHERE a.id = ?`,
-      [result.insertId]
-    );
-
-    res.status(201).json(agendamento[0]);
+    res.json(agendamentos);
   } catch (error) {
-    console.error('Erro ao criar agendamento:', error);
-    res.status(500).json({ error: 'Erro ao criar agendamento' });
+    console.error('Erro ao buscar agendamentos:', error);
+    res.status(500).json({ error: 'Erro ao buscar agendamentos' });
+  }
+});
+
+app.put('/agendamentos/:id', authenticate, async (req, res) => {
+  try {
+    const { horario, servico_id } = req.body;
+    const { id } = req.params;
+
+    // Verifica se o agendamento pertence ao usuário
+    const [agendamento] = await pool.query(
+      'SELECT id FROM agendamentos WHERE id = ? AND usuario_id = ?',
+      [id, req.userId]
+    );
+
+    if (agendamento.length === 0) {
+      return res.status(404).json({ error: 'Agendamento não encontrado' });
+    }
+
+    // Atualiza o agendamento
+    await pool.query(
+      'UPDATE agendamentos SET horario = ?, servico_id = ? WHERE id = ?',
+      [horario, servico_id, id]
+    );
+
+    res.json({ message: 'Agendamento atualizado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar agendamento:', error);
+    res.status(500).json({ error: 'Erro ao atualizar agendamento' });
   }
 });
 

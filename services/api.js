@@ -1,10 +1,9 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-// Configuração base - ajuste conforme seu ambiente
 const BASE_URL = Platform.OS === 'android' 
-  ? 'http://10.0.2.2:3000'  // Para Android emulador
-  : 'http://localhost:3000'; // Para iOS/outros
+  ? 'http://10.0.2.2:3000'
+  : 'http://localhost:3000';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -15,14 +14,10 @@ const api = axios.create({
   }
 });
 
-// Armazenamento do token
 let authToken = '';
 
-// Função para definir o token
 export const setAuthToken = (token) => {
   authToken = token;
-  
-  // Atualiza o header padrão
   if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
@@ -30,7 +25,6 @@ export const setAuthToken = (token) => {
   }
 };
 
-// Interceptor para tratamento global de erros
 api.interceptors.response.use(
   response => response,
   error => {
@@ -39,12 +33,10 @@ api.interceptors.response.use(
       status: error.response?.status,
       message: error.message
     });
-    
     return Promise.reject(error);
   }
 );
 
-// 1. Autenticação
 export const fazerLogin = async (email, senha) => {
   try {
     const response = await api.post('/login', { email, senha });
@@ -62,10 +54,9 @@ export const fazerLogin = async (email, senha) => {
   }
 };
 
-// 2. Cadastro de Usuários
-export const criarUsuario = async ({ nome, email, senha }) => {
+export const criarUsuario = async ({ nome, email, senha, telefone }) => {
   try {
-    const response = await api.post('/usuarios', { nome, email, senha });
+    const response = await api.post('/usuarios', { nome, email, senha, telefone });
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.error || 'Falha no cadastro. Tente novamente.';
@@ -73,7 +64,6 @@ export const criarUsuario = async ({ nome, email, senha }) => {
   }
 };
 
-// 3. Serviços
 export const listarServicos = async () => {
   try {
     const response = await api.get('/servicos');
@@ -83,14 +73,12 @@ export const listarServicos = async () => {
   }
 };
 
-// 4. Horários Disponíveis
-export const buscarHorariosDisponiveis = async (data) => {
+export const buscarHorariosDisponiveis = async (data, agendamentoId = null) => {
   try {
     const response = await api.get('/horarios-disponiveis', {
-      params: { data }
+      params: { data, agendamentoId }
     });
     
-    // Garante que os dados estão no formato esperado
     if (!Array.isArray(response.data)) {
       throw new Error('Formato de dados inválido');
     }
@@ -102,7 +90,6 @@ export const buscarHorariosDisponiveis = async (data) => {
   }
 };
 
-// 5. Agendamentos
 export const criarAgendamento = async ({ servico_id, data, horario }) => {
   try {
     const response = await api.post('/agendamentos', {
@@ -119,7 +106,7 @@ export const criarAgendamento = async ({ servico_id, data, horario }) => {
 
 export const listarMeusAgendamentos = async () => {
   try {
-    const response = await api.get('/agendamentos');
+    const response = await api.get('/agendamentos/meus');
     return response.data;
   } catch (error) {
     throw new Error('Falha ao carregar agendamentos');
@@ -132,6 +119,18 @@ export const cancelarAgendamento = async (id) => {
     return response.data;
   } catch (error) {
     throw new Error('Falha ao cancelar agendamento');
+  }
+};
+
+export const alterarAgendamento = async (id, { horario, servico_id }) => {
+  try {
+    const response = await api.put(`/agendamentos/${id}`, {
+      horario,
+      servico_id
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error('Falha ao atualizar agendamento');
   }
 };
 
