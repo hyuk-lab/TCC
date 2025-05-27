@@ -104,16 +104,6 @@ export default function MeusAgendamentos() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Meus Agendamentos</Text>
-        <TouchableOpacity 
-          style={styles.novoAgendamentoBtn}
-          onPress={() => navigation.navigate('Agendamento')}
-        >
-          <MaterialIcons name="add" size={24} color="#2E86AB" />
-        </TouchableOpacity>
-      </View>
-
       {agendamentos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Nenhum agendamento encontrado</Text>

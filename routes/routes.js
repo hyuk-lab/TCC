@@ -46,17 +46,8 @@ function AppRoutes() {
         <Stack.Screen 
           name="Agendamento" 
           component={AgendamentoScreen} 
-          options={{ 
-            title: 'Novo Agendamento',
-            headerLeft: () => (
-              <TouchableOpacity 
-                style={{ marginLeft: 15 }}
-                onPress={() => navigation.goBack()}
-              >
-                <MaterialIcons name="arrow-back" size={24} color="#2E86AB" />
-              </TouchableOpacity>
-            )
-          }}
+          options={{headerShown: false
+ }}
         />
       </Stack.Navigator>
     </NavigationContainer>
