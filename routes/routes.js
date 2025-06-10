@@ -1,8 +1,9 @@
 import { createStackNavigator } from "@react-navigation/stack";
 import { NavigationContainer } from "@react-navigation/native";
 import React from "react";
-import { TouchableOpacity } from "react-native"; // Adicione esta linha
-import { MaterialIcons } from '@expo/vector-icons'; // Adicione esta linha
+import { TouchableOpacity } from "react-native";
+import { MaterialIcons } from '@expo/vector-icons';
+
 import LoginScreen from "../telas/LoginScreen";
 import CadastroScreen from "../telas/CadastroScreen";
 import MeusAgendamentos from "../telas/MeusAgendamentos";
@@ -31,7 +32,7 @@ function AppRoutes() {
           name="MeusAgendamentos" 
           component={MeusAgendamentos} 
           options={({ navigation }) => ({ 
-            title: 'Meus Agendamentos',
+            title: '',
             headerRight: () => (
               <TouchableOpacity 
                 style={{ marginRight: 15 }}
@@ -46,8 +47,7 @@ function AppRoutes() {
         <Stack.Screen 
           name="Agendamento" 
           component={AgendamentoScreen} 
-          options={{headerShown: false
- }}
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>
@@ -55,4 +55,3 @@ function AppRoutes() {
 }
 
 export default AppRoutes;
-
