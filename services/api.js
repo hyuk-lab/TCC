@@ -41,12 +41,12 @@ export const fazerLogin = async (email, senha) => {
   try {
     const response = await api.post('/login', { email, senha });
     const { token, ...userData } = response.data;
-    
+
     if (token) {
       setAuthToken(token);
       return userData;
     }
-    
+
     throw new Error('Token não recebido na resposta');
   } catch (error) {
     const errorMessage = error.response?.data?.error || 'Falha no login. Verifique suas credenciais.';
@@ -78,11 +78,11 @@ export const buscarHorariosDisponiveis = async (data, agendamentoId = null) => {
     const response = await api.get('/horarios-disponiveis', {
       params: { data, agendamentoId }
     });
-    
+
     if (!Array.isArray(response.data)) {
       throw new Error('Formato de dados inválido');
     }
-    
+
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.error || 'Falha ao buscar horários disponíveis';
