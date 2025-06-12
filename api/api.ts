@@ -82,6 +82,7 @@ export interface IAgendamentoCriar {
   servico_id: number;
   data: string;
   horario: string;
+  usuario_id: number;
 }
 
 export async function criarAgendamento(data: IAgendamentoCriar): Promise<void> {

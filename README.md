@@ -9,5 +9,5 @@ npm start
 #### Iniciar API
 CD API
 
-node server.js
+npx ts-node server.ts
 

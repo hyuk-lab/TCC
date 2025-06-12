@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../routes/routes';
-import { criarUsuario } from '../services/api';
+import { criarUsuario } from '../api/api';
 
 type CadastroNav = StackNavigationProp<RootStackParamList, 'Cadastro'>;
 

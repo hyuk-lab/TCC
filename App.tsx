@@ -1,5 +1,4 @@
 // App.tsx
-import React from 'react';
 import AppRoutes from './routes/routes';  // ajuste o caminho conforme sua estrutura
 
 export default function App(): JSX.Element {

@@ -5,10 +5,12 @@ dotenv.config();
 import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import mysql from 'mysql2/promise';
-
+import pkg from 'jsonwebtoken';
+const { sign, verify } = pkg;
+type JwtPayload = any;
 const app = express();
 const port = +(process.env.PORT || 3000);
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
@@ -27,9 +29,14 @@ const pool = mysql.createPool({
   connectionLimit: 10,
 });
 
-interface UserTokenPayload extends JwtPayload { id: number; }
+interface UserTokenPayload extends JwtPayload {
+  id: number;
+}
+
 declare module 'express-serve-static-core' {
-  interface Request { userId?: number; }
+  interface Request {
+    userId?: number;
+  }
 }
 
 // Inicializa BD
@@ -70,6 +77,7 @@ async function initializeDatabase(): Promise<void> {
        FOREIGN KEY (servico_id) REFERENCES servicos(id)
      )`,
   ];
+
   for (const q of tableQueries) {
     await pool.query(q);
   }
@@ -104,12 +112,10 @@ function authenticate(req: Request, res: Response, next: NextFunction): void {
     next();
   } catch {
     res.status(403).json({ error: 'Token inválido ou expirado' });
-    return;
   }
 }
 
 // ROTAS
-
 app.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { email, senha } = req.body;
   if (!email || !senha) {
@@ -156,71 +162,50 @@ app.get('/servicos', async (_req: Request, res: Response): Promise<void> => {
 });
 
 app.get('/horarios-disponiveis', async (req: Request, res: Response): Promise<void> => {
-  // dentro de server.ts
+  const data = req.query.data as string;
+  const duracao = Number(req.query.duracao) || 30;
 
-  // Utility: converte "HH:MM" → minutos desde meia-noite
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+    res.status(400).json({ error: 'Data inválida. Use YYYY-MM-DD' });
+    return;
+  }
+
   function toMinutes(hm: string): number {
     const [h, m] = hm.split(':').map(Number);
     return h * 60 + m;
   }
-  // Utility: minutos → "HH:MM"
+
   function toHM(mins: number): string {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
-  app.get('/horarios-disponiveis', async (req: Request, res: Response): Promise<void> => {
-    const data = req.query.data as string;
-    const duracao = Number(req.query.duracao) || 30;
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
+    `SELECT TIME_FORMAT(horario, '%H:%i') AS hora, s.duracao
+       FROM agendamentos a
+       JOIN servicos s ON a.servico_id = s.id
+      WHERE a.data = ? AND a.status != 'cancelado'`,
+    [data]
+  );
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-      res.status(400).json({ error: 'Data inválida. Use YYYY-MM-DD' });
-      return;
-    }
-
-    // Utilities
-    function toMinutes(hm: string): number {
-      const [h, m] = hm.split(':').map(Number);
-      return h * 60 + m;
-    }
-    function toHM(mins: number): string {
-      const h = Math.floor(mins / 60);
-      const m = mins % 60;
-      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    }
-
-    // Busca agendamentos do dia
-    const [rows] = await pool.query<mysql.RowDataPacket[]>(
-      `SELECT TIME_FORMAT(horario, '%H:%i') AS hora, s.duracao
-         FROM agendamentos a
-         JOIN servicos s ON a.servico_id = s.id
-        WHERE a.data = ? AND a.status != 'cancelado'`,
-      [data]
-    );
-
-    // Constrói intervalos ocupados em minutos
-    const ocupados: Array<[number, number]> = rows.map((r): [number, number] => {
-      const start = toMinutes(r.hora as string);
-      const match = r.duracao.match(/(\d+)(?::| )(\d+)?/);
-      const h = match ? Number(match[1]) : 0;
-      const m = match && match[2] ? Number(match[2]) : 0;
-      const durMin = h * 60 + m;
-      return [start, start + durMin];
-    });
-
-    // Gera slots de 30m entre 8h e 18h, filtrando conflitos
-    const slots: { hora: string; status: 'disponivel' | 'ocupado' }[] = [];
-    for (let t = 8 * 60; t + duracao <= 18 * 60; t += 30) {
-      const fim = t + duracao;
-      const conflito = ocupados.some(([s, e]) => !(e <= t || s >= fim));
-      slots.push({ hora: toHM(t), status: conflito ? 'ocupado' : 'disponivel' });
-    }
-
-    res.json(slots);
+  const ocupados: Array<[number, number]> = rows.map((r): [number, number] => {
+    const start = toMinutes(r.hora as string);
+    const match = (r.duracao as string).match(/(\d+)(?::| )(\d+)?/);
+    const h = match ? Number(match[1]) : 0;
+    const m = match && match[2] ? Number(match[2]) : 0;
+    const durMin = h * 60 + m;
+    return [start, start + durMin];
   });
 
+  const slots: { hora: string; status: 'disponivel' | 'ocupado' }[] = [];
+  for (let t = 8 * 60; t + duracao <= 18 * 60; t += 30) {
+    const fim = t + duracao;
+    const conflito = ocupados.some(([s, e]) => !(e <= t || s >= fim));
+    slots.push({ hora: toHM(t), status: conflito ? 'ocupado' : 'disponivel' });
+  }
 
+  res.json(slots);
 });
 
 app.post('/agendamentos', authenticate, async (req: Request, res: Response): Promise<void> => {
@@ -230,7 +215,10 @@ app.post('/agendamentos', authenticate, async (req: Request, res: Response): Pro
     return;
   }
 
-  const [ex] = await pool.query('SELECT id FROM agendamentos WHERE data = ? AND horario = ? AND status != "cancelado"', [data, horario]);
+  const [ex] = await pool.query(
+    'SELECT id FROM agendamentos WHERE data = ? AND horario = ? AND status != "cancelado"',
+    [data, horario]
+  );
   if ((ex as any[]).length > 0) {
     res.status(409).json({ error: 'Horário já ocupado' });
     return;
@@ -261,7 +249,6 @@ app.delete('/agendamentos/:id', authenticate, async (req: Request, res: Response
   res.json({ message: 'Agendamento cancelado' });
 });
 
-// Roda servidor após inicializar DB
 initializeDatabase()
   .then(() => app.listen(port, () => console.log(`Servidor rodando na porta ${port}`)))
   .catch(err => {

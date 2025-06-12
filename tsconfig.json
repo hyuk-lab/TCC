@@ -1,26 +1,19 @@
 {
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "jsx": "react-native",
-    "strict": true,
+    "target": "ES2020",
+    "module": "CommonJS",
     "moduleResolution": "node",
-    "allowJs": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "node",
+      "express"
+    ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "**/*.js",
-    "**/*.jsx",
-    "App.ys"
-  ],
-  "exclude": [
-    "node_modules"
+    "services/**/*.ts"
   ],
   "extends": "expo/tsconfig.base"
 }
