@@ -13,16 +13,46 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.TCC",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c"
+            ]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.anonymous.TCC",
+      "permissions": [
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "androidClientId": "489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c.apps.googleusercontent.com",
+          "iosClientId": "489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c.apps.googleusercontent.com",
+          "webClientId": "489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c.apps.googleusercontent.com",
+          "scopes": ["profile", "email"],
+          "iosUrlScheme": "com.googleusercontent.apps.489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c"
+        }
+      ]
+    ],
+    "scheme": "tcc"
   }
 }

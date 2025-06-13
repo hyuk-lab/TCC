@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, FlatList, Alert, ActivityIndi
 import { Calendar, DateData } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import { listarServicos, buscarHorariosDisponiveis, criarAgendamento } from '../api/api';
+import { useAlert } from '../components/AlertContext';
 
 // Adicione esta interface no topo do arquivo, com as outras interfaces
 interface IAgendamentoCriar {
@@ -71,6 +72,7 @@ const CustomAlert = ({ visible, type, title, message, onClose }: IAlertProps) =>
 
 export default function AgendamentoScreen(): JSX.Element {
   const navigation = useNavigation();
+  const { showAlert } = useAlert();
   const [servicos, setServicos] = useState<IServico[]>([]);
   const [servicoSelecionado, setServicoSelecionado] = useState<IServico | null>(null);
   const [date, setDate] = useState<string>('');

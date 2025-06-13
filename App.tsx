@@ -1,6 +1,11 @@
-// App.tsx
-import AppRoutes from './routes/routes';  // ajuste o caminho conforme sua estrutura
+import React from 'react';
+import { AlertProvider } from '../TCC/components/AlertContext';
+import AppRoutes from '../TCC/routes/routes';
 
-export default function App(): JSX.Element {
-  return <AppRoutes />;
+export default function App() {
+  return (
+    <AlertProvider>
+      <AppRoutes />
+    </AlertProvider>
+  );
 }

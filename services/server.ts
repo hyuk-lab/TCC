@@ -1,7 +1,8 @@
 // server.ts
 import dotenv from 'dotenv';
 dotenv.config();
-
+import { OAuth2Client } from 'google-auth-library';
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 import express, { Request, Response, NextFunction } from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -255,3 +256,39 @@ initializeDatabase()
     console.error('Erro ao inicializar banco:', err);
     process.exit(1);
   });
+
+app.post('/login-google', async (req: Request, res: Response): Promise<void> => {
+  const { token } = req.body;
+  if (!token) {
+    res.status(400).json({ error: 'Token não fornecido' });
+    return;
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.email) throw new Error('Email não disponível');
+
+    const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [payload.email]);
+    let user = (rows as any[])[0];
+
+    // Se usuário não existe, cria um novo
+    if (!user) {
+      await pool.query(
+        'INSERT INTO usuarios (nome, email) VALUES (?, ?)',
+        [payload.name || 'Usuário Google', payload.email]
+      );
+      const [newUser] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [payload.email]);
+      user = (newUser as any[])[0];
+    }
+
+    const jwtToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ id: user.id, nome: user.nome, email: user.email, tipo: user.tipo, token: jwtToken });
+  } catch (error) {
+    console.error('Erro ao autenticar com Google:', error);
+    res.status(401).json({ error: 'Falha na autenticação com Google' });
+  }
+});
