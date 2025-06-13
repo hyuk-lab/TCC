@@ -21,7 +21,7 @@
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
     "expo": "~52.0.42",
-    "expo-auth-session": "^6.2.0",
+    "expo-auth-session": "~6.0.3",
     "expo-status-bar": "~2.0.1",
     "expo-web-browser": "^14.1.6",
     "express": "^5.1.0",

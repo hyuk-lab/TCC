@@ -1,4 +1,3 @@
-// ------------ api.ts ------------
 import axios, { AxiosInstance } from 'axios';
 import { Platform } from 'react-native';
 
@@ -75,8 +74,6 @@ export async function buscarHorariosDisponiveis(
   const response = await api.get('/horarios-disponiveis', { params });
   return response.data;
 }
-
-
 
 export interface IAgendamentoCriar {
   servico_id: number;

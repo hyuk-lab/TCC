@@ -1,85 +1,60 @@
-import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+// src/telas/LoginScreen.tsx
+import React, { useState, useEffect } from 'react';
+import {
+  View, TextInput, TouchableOpacity, Text, StyleSheet, Platform, Image
+} from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../routes/routes';
 import { fazerLogin, api } from '../api/api';
-import {
-  GoogleSignin,
-  GoogleSigninButton,
-  statusCodes
-} from '@react-native-google-signin/google-signin';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { useAlert } from '../components/AlertContext';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type LoginNav = StackNavigationProp<RootStackParamList, 'Login'>;
 
-
-// Configuração correta para TypeScript
-GoogleSignin.configure({
-  webClientId: '489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c.apps.googleusercontent.com',
-  iosClientId: '489161883530-jqk3ne93qlfjmk89lnplshppu94pku1c.apps.googleusercontent.com',
-  offlineAccess: true,
-  forceCodeForRefreshToken: true,
-} as any); // Usamos 'as any' para contornar a tipagem estrita
-
 export default function LoginScreen({ navigation }: { navigation: LoginNav }) {
-  const [email, setEmail] = useState<string>('');
-  const [senha, setSenha] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
 
-  const handleLogin = async () => {
-    try {
-      setLoading(true);
-      await fazerLogin(email, senha);
-      navigation.reset({ index: 0, routes: [{ name: 'MeusAgendamentos' }] });
-    } catch (e: any) {
-      showAlert('Erro', e.message || 'Erro ao fazer login', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: Platform.select({
+      ios: '489161883530-ios.apps.googleusercontent.com',
+      android: '489161883530-android.apps.googleusercontent.com',
+      default: '489161883530-web.apps.googleusercontent.com',
+    }),
+  });
 
-  const signInWithGoogle = async () => {
-    try {
-      // 1. Verifica se os serviços do Google Play estão disponíveis (Android)
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-
-      // 2. Realiza o login
-      const userInfo = await GoogleSignin.signIn();
-
-      // 3. Obtém o token de acesso
-      const { idToken } = await GoogleSignin.getTokens();
-
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const idToken = response.authentication?.idToken;
       if (!idToken) {
-        throw new Error('Não foi possível obter o token de acesso');
+        showAlert('error', 'Token não encontrado', 'error');
+        return;
       }
-
-      // 4. Envia para seu backend
-      const response = await api.post('/login-google', { token: idToken });
-      const { token: jwtToken } = response.data;
-
-      if (jwtToken) {
-        // 5. Armazena o token JWT para futuras requisições
-        api.defaults.headers.common['Authorization'] = `Bearer ${jwtToken}`;
-        navigation.reset({ index: 0, routes: [{ name: 'MeusAgendamentos' }] });
-      }
-    } catch (error: any) {
-      // Tratamento de erros específicos do Google Sign-In
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        showAlert('Aviso', 'Login cancelado pelo usuário', 'info');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        showAlert('Aviso', 'Login já em progresso', 'info');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        showAlert('Erro', 'Google Play Services não disponível', 'error');
-      } else {
-        showAlert('Erro', error.message || 'Falha ao autenticar com Google', 'error');
-      }
+      api.post('/login-google', { token: idToken })
+        .then(r => {
+          api.defaults.headers.common['Authorization'] = `Bearer ${r.data.token}`;
+          navigation.reset({ index: 0, routes: [{ name: 'MeusAgendamentos' }] });
+        })
+        .catch(err => showAlert('error', 'Erro ao autenticar com Google', 'error'));
     }
+  }, [response]);
+
+  const handleLogin = () => {
+    setLoading(true);
+    fazerLogin(email, senha)
+      .then(() => navigation.reset({ index: 0, routes: [{ name: 'MeusAgendamentos' }] }))
+      .catch(err => showAlert('error', err.message || 'Erro ao fazer login', 'error'))
+      .finally(() => setLoading(false));
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bem-vindo</Text>
+      <Text style={styles.title}>Bem‑vindo</Text>
 
       <TextInput
         style={styles.input}
@@ -105,30 +80,33 @@ export default function LoginScreen({ navigation }: { navigation: LoginNav }) {
         onPress={handleLogin}
         disabled={loading}
       >
-        <Text style={styles.buttonText}>
-          {loading ? 'Entrando...' : 'Entrar'}
-        </Text>
+        <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
       </TouchableOpacity>
 
-      <View style={styles.dividerContainer}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>ou</Text>
-        <View style={styles.dividerLine} />
+      <View style={styles.divider}>
+        <View style={styles.line} />
+        <Text style={styles.or}>ou</Text>
+        <View style={styles.line} />
       </View>
 
-      <GoogleSigninButton
+      <TouchableOpacity
         style={styles.googleButton}
-        size={GoogleSigninButton.Size.Wide}
-        color={GoogleSigninButton.Color.Dark}
-        onPress={signInWithGoogle}
-      />
+        onPress={() => promptAsync()}
+        disabled={!request}
+      >
+        <Image
+          source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/5/53/Google_"G"_Logo.svg' }}
+          style={styles.googleIcon}
+        />
+        <Text style={styles.googleText}>Entrar com Google</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.registerButton}
+        style={styles.register}
         onPress={() => navigation.navigate('Cadastro')}
       >
         <Text style={styles.registerText}>
-          Não tem uma conta? <Text style={styles.registerHighlight}>Cadastre-se</Text>
+          Não tem conta? <Text style={styles.registerLink}>Cadastre-se</Text>
         </Text>
       </TouchableOpacity>
     </View>
@@ -137,74 +115,56 @@ export default function LoginScreen({ navigation }: { navigation: LoginNav }) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f5f5f5',
+    flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#F5F9FC'
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2E86AB',
-    marginBottom: 32,
-    textAlign: 'center',
+    fontSize: 32, fontWeight: '700', color: '#2E86AB', marginBottom: 32, textAlign: 'center'
   },
   input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    fontSize: 16,
-    color: '#333',
+    height: 50, borderWidth: 1, borderColor: '#DDD', borderRadius: 8,
+    paddingHorizontal: 16, marginBottom: 16, backgroundColor: '#FFF', fontSize: 16
   },
   button: {
-    height: 50,
-    backgroundColor: '#2E86AB',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
+    height: 52, backgroundColor: '#2E86AB', borderRadius: 8,
+    justifyContent: 'center', alignItems: 'center', marginTop: 8,
+    shadowColor: '#2E4052', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 4, elevation: 3
   },
   buttonDisabled: {
-    backgroundColor: '#B1BEC9',
+    backgroundColor: '#B1BEC9'
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    color: '#FFF', fontSize: 18, fontWeight: '600'
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
+  divider: {
+    flexDirection: 'row', alignItems: 'center', marginVertical: 24
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#ddd',
+  line: {
+    flex: 1, height: 1, backgroundColor: '#DDD'
   },
-  dividerText: {
-    marginHorizontal: 12,
-    color: '#999',
-    fontSize: 14,
+  or: {
+    marginHorizontal: 12, color: '#999', fontSize: 14
   },
   googleButton: {
-    width: '100%',
-    height: 48,
+    flexDirection: 'row', alignItems: 'center',
+    height: 52, borderRadius: 8, borderWidth: 1, borderColor: '#DDD',
+    justifyContent: 'center', backgroundColor: '#FFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1, shadowRadius: 2, elevation: 2
   },
-  registerButton: {
-    marginTop: 24,
-    alignSelf: 'center',
+  googleIcon: {
+    width: 24, height: 24, marginRight: 8
+  },
+  googleText: {
+    fontSize: 16, color: '#444'
+  },
+  register: {
+    marginTop: 24, alignSelf: 'center'
   },
   registerText: {
-    color: '#666',
-    fontSize: 14,
+    color: '#666', fontSize: 14
   },
-  registerHighlight: {
-    color: '#2E86AB',
-    fontWeight: '600',
-  },
+  registerLink: {
+    color: '#2E86AB', fontWeight: '600'
+  }
 });

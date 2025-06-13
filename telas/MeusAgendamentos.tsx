@@ -9,14 +9,21 @@ import {
   RefreshControl
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import * as AppRoutes from '../routes/routes';
-import { listarMeusAgendamentos, cancelarAgendamento, IAgendamento } from '../api/api';
+import { useNavigation } from '@react-navigation/native';
+import { RootStackParamList } from '../routes/routes';
+import {
+  listarMeusAgendamentos,
+  cancelarAgendamento,
+  IAgendamento
+} from '../api/api';
 import { useAlert } from '../components/AlertContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import { FloatingActionButton } from '../components/FloatingActionButton';
 
-type MeusAgNav = StackNavigationProp<AppRoutes.RootStackParamList, 'MeusAgendamentos'>;
+type MeusAgNav = StackNavigationProp<RootStackParamList, 'MeusAgendamentos'>;
 
-export default function MeusAgendamentosScreen({ navigation }: { navigation: MeusAgNav }) {
+export default function MeusAgendamentosScreen() {
+  const navigation = useNavigation<MeusAgNav>();
   const [agendamentos, setAgendamentos] = useState<IAgendamento[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -50,43 +57,65 @@ export default function MeusAgendamentosScreen({ navigation }: { navigation: Meu
     }
   };
 
-  const renderItem = ({ item }: { item: IAgendamento }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.servico}>{item.servico_nome}</Text>
-        <View style={[
-          styles.statusBadge,
-          item.status === 'cancelado' && styles.statusCancelado,
-          item.status === 'confirmado' && styles.statusConfirmado,
-          item.status === 'pendente' && styles.statusPendente
-        ]}>
-          <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+  const renderItem = ({ item }: { item: IAgendamento }) => {
+    const precoNum =
+      typeof item.servico_preco === 'number'
+        ? item.servico_preco
+        : parseFloat(item.servico_preco as any) || 0;
+
+    const precoTexto =
+      item.servico_preco != null
+        ? `R$ ${precoNum.toFixed(2).replace('.', ',')}`
+        : '—';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.servico}>{item.servico_nome}</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              item.status === 'cancelado' && styles.statusCancelado,
+              item.status === 'confirmado' && styles.statusConfirmado,
+              item.status === 'pendente' && styles.statusPendente
+            ]}
+          >
+            <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+          </View>
         </View>
+
+        <View style={styles.cardBody}>
+          <View style={styles.infoRow}>
+            <MaterialIcons name="calendar-today" size={16} color="#6C7A89" />
+            <Text style={styles.infoText}>{item.data} • {item.horario}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <MaterialIcons name="attach-money" size={16} color="#6C7A89" />
+            <Text style={styles.infoText}>{precoTexto}</Text>
+          </View>
+        </View>
+
+        {item.status !== 'cancelado' && (
+          <TouchableOpacity
+            onPress={() => handleCancel(item.id)}
+            style={styles.cancelButton}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.cancelText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
       </View>
+    );
+  };
 
-      <View style={styles.cardBody}>
-        <View style={styles.infoRow}>
-          <MaterialIcons name="calendar-today" size={16} color="#6C7A89" />
-          <Text style={styles.infoText}>{item.data} • {item.horario}</Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <MaterialIcons name="attach-money" size={16} color="#6C7A89" />
-          <Text style={styles.infoText}>R$ {item.servico_preco.toFixed(2).replace('.', ',')}</Text>
-        </View>
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E86AB" />
       </View>
-
-      {item.status !== 'cancelado' && (
-        <TouchableOpacity
-          onPress={() => handleCancel(item.id)}
-          style={styles.cancelButton}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.cancelText}>Cancelar</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -109,9 +138,19 @@ export default function MeusAgendamentosScreen({ navigation }: { navigation: Meu
           <View style={styles.emptyContainer}>
             <MaterialIcons name="event-busy" size={48} color="#B1BEC9" />
             <Text style={styles.emptyTitle}>Nenhum agendamento</Text>
-            <Text style={styles.emptyMessage}>Você ainda não possui agendamentos marcados</Text>
+            <Text style={styles.emptyMessage}>
+              Você ainda não possui agendamentos marcados
+            </Text>
           </View>
         }
+      />
+
+      {/* Botão flutuante apenas nesta tela */}
+      <FloatingActionButton
+        onPress={() => navigation.navigate('Agendamento')}
+        iconName="add"
+        iconColor="#fff"
+        style={styles.fab}
       />
     </View>
   );
@@ -122,6 +161,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F9FC',
     padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F5F9FC',
   },
   listContent: {
     paddingBottom: 16,
@@ -220,5 +265,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6C7A89',
     textAlign: 'center',
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
   },
 });
