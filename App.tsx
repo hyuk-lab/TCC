@@ -1,6 +1,6 @@
 import React from 'react';
-import { AlertProvider } from '../TCC/components/AlertContext';
-import AppRoutes from '../TCC/routes/routes';
+import { AlertProvider } from './components/AlertContext'
+import AppRoutes from './routes/routes';
 
 export default function App() {
   return (

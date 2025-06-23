@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  RefreshControl
+  View, Text, FlatList, TouchableOpacity, ActivityIndicator, StyleSheet,
+  RefreshControl, Modal, TextInput
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../routes/routes';
 import {
-  listarMeusAgendamentos,
-  cancelarAgendamento,
-  IAgendamento
+  listarMeusAgendamentos, cancelarAgendamento, atualizarInformacoesCarro, IAgendamento
 } from '../api/api';
 import { useAlert } from '../components/AlertContext';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -29,11 +22,28 @@ export default function MeusAgendamentosScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const { showAlert } = useAlert();
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [carroNome, setCarroNome] = useState('');
+  const [carroModelo, setCarroModelo] = useState('');
+  const [carroPlaca, setCarroPlaca] = useState('');
+  const [agendamentoSelecionado, setAgendamentoSelecionado] = useState<IAgendamento | null>(null);
+  const [showCarModal, setShowCarModal] = useState(false);
+  const [newAgendamentoId, setNewAgendamentoId] = useState<number | null>(null);
+
   const load = async () => {
     try {
       setLoading(true);
       const data = await listarMeusAgendamentos();
       setAgendamentos(data);
+
+      // Verifica se há agendamentos recentes sem informações de carro
+      const recenteSemCarro = data.find(a =>
+        !a.carro_nome && new Date(a.data) > new Date() && a.status !== 'cancelado'
+      );
+      if (recenteSemCarro) {
+        setNewAgendamentoId(recenteSemCarro.id);
+        setShowCarModal(true);
+      }
     } catch (error) {
       showAlert('Erro', 'Não foi possível carregar os agendamentos', 'error');
     } finally {
@@ -57,29 +67,45 @@ export default function MeusAgendamentosScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: IAgendamento }) => {
-    const precoNum =
-      typeof item.servico_preco === 'number'
-        ? item.servico_preco
-        : parseFloat(item.servico_preco as any) || 0;
+  const abrirModal = (agendamento: IAgendamento) => {
+    setAgendamentoSelecionado(agendamento);
+    setCarroNome(agendamento.carro_nome || '');
+    setCarroModelo(agendamento.carro_modelo || '');
+    setCarroPlaca(agendamento.carro_placa || '');
+    setModalVisible(true);
+  };
 
-    const precoTexto =
-      item.servico_preco != null
-        ? `R$ ${precoNum.toFixed(2).replace('.', ',')}`
-        : '—';
+  const salvarInformacoesCarro = async () => {
+    if (!agendamentoSelecionado) return;
+
+    try {
+      await atualizarInformacoesCarro(agendamentoSelecionado.id, {
+        carro_nome: carroNome,
+        carro_modelo: carroModelo,
+        carro_placa: carroPlaca,
+      });
+      showAlert('Sucesso', 'Informações do veículo atualizadas!', 'success');
+      setModalVisible(false);
+      load();
+    } catch (error) {
+      showAlert('Erro', 'Não foi possível atualizar as informações do veículo', 'error');
+    }
+  };
+
+  const renderItem = ({ item }: { item: IAgendamento }) => {
+    const precoNum = typeof item.servico_preco === 'number' ? item.servico_preco : parseFloat(item.servico_preco as any) || 0;
+    const precoTexto = `R$ ${precoNum.toFixed(2).replace('.', ',')}`;
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.servico}>{item.servico_nome}</Text>
-          <View
-            style={[
-              styles.statusBadge,
-              item.status === 'cancelado' && styles.statusCancelado,
-              item.status === 'confirmado' && styles.statusConfirmado,
-              item.status === 'pendente' && styles.statusPendente
-            ]}
-          >
+          <View style={[
+            styles.statusBadge,
+            item.status === 'cancelado' && styles.statusCancelado,
+            item.status === 'confirmado' && styles.statusConfirmado,
+            item.status === 'pendente' && styles.statusPendente,
+          ]}>
             <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
           </View>
         </View>
@@ -94,28 +120,41 @@ export default function MeusAgendamentosScreen() {
             <MaterialIcons name="attach-money" size={16} color="#6C7A89" />
             <Text style={styles.infoText}>{precoTexto}</Text>
           </View>
+
+          {item.carro_nome && (
+            <View style={styles.infoRow}>
+              <MaterialIcons name="directions-car" size={16} color="#6C7A89" />
+              <Text style={styles.infoText}>
+                {item.carro_nome} - {item.carro_modelo} ({item.carro_placa})
+              </Text>
+            </View>
+          )}
         </View>
 
         {item.status !== 'cancelado' && (
-          <TouchableOpacity
-            onPress={() => handleCancel(item.id)}
-            style={styles.cancelButton}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => abrirModal(item)}
+              style={[styles.cancelButton, { backgroundColor: '#E3F2FD' }]}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.cancelText, { color: '#2E86AB' }]}>
+                {item.carro_nome ? 'Editar veículo' : 'Adicionar veículo'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => handleCancel(item.id)}
+              style={styles.cancelButton}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     );
   };
-
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E86AB" />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -145,7 +184,102 @@ export default function MeusAgendamentosScreen() {
         }
       />
 
-      {/* Botão flutuante apenas nesta tela */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>
+              Informações do Veículo
+            </Text>
+
+            <TextInput
+              placeholder="Nome do carro"
+              style={styles.input}
+              value={carroNome}
+              onChangeText={setCarroNome}
+            />
+            <TextInput
+              placeholder="Modelo"
+              style={styles.input}
+              value={carroModelo}
+              onChangeText={setCarroModelo}
+            />
+            <TextInput
+              placeholder="Placa"
+              style={styles.input}
+              value={carroPlaca}
+              onChangeText={setCarroPlaca}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={[styles.cancelButton, { flex: 1 }]}
+              >
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={salvarInformacoesCarro}
+                style={[styles.cancelButton, { flex: 1, backgroundColor: '#2E86AB' }]}
+              >
+                <Text style={[styles.cancelText, { color: '#fff' }]}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCarModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>
+              Adicionar Veículo
+            </Text>
+            <Text style={{ marginBottom: 15 }}>
+              Por favor, adicione as informações do seu veículo para este agendamento.
+            </Text>
+
+            <TextInput
+              placeholder="Nome do carro"
+              style={styles.input}
+              value={carroNome}
+              onChangeText={setCarroNome}
+            />
+            <TextInput
+              placeholder="Modelo"
+              style={styles.input}
+              value={carroModelo}
+              onChangeText={setCarroModelo}
+            />
+            <TextInput
+              placeholder="Placa"
+              style={styles.input}
+              value={carroPlaca}
+              onChangeText={setCarroPlaca}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setShowCarModal(false)}
+                style={[styles.cancelButton, { flex: 1 }]}
+              >
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (newAgendamentoId) {
+                    abrirModal(agendamentos.find(a => a.id === newAgendamentoId)!);
+                    setShowCarModal(false);
+                  }
+                }}
+                style={[styles.cancelButton, { flex: 1, backgroundColor: '#2E86AB' }]}
+              >
+                <Text style={[styles.cancelText, { color: '#fff' }]}>Adicionar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <FloatingActionButton
         onPress={() => navigation.navigate('Agendamento')}
         iconName="add"
@@ -270,5 +404,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 30,
     right: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    width: '85%',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 8,
+    borderRadius: 5,
+    marginBottom: 10,
   },
 });

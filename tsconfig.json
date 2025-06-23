@@ -13,7 +13,7 @@
     ]
   },
   "include": [
-    "services/**/*.ts"
-  ],
+    "services/**/*.js"
+, "services/server.ts"  ],
   "extends": "expo/tsconfig.base"
 }

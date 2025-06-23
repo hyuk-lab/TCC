@@ -1,4 +1,3 @@
-// src/telas/AgendamentoScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -7,14 +6,15 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Modal
+  Modal,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useNavigation } from '@react-navigation/native';
 import {
   listarServicos,
   buscarHorariosDisponiveis,
-  criarAgendamento
+  criarAgendamento,
+  listarMeusAgendamentos,
 } from '../api/api';
 import { useAlert } from '../components/AlertContext';
 
@@ -76,7 +76,6 @@ const CustomAlert = ({ visible, type, title, message, onClose }: IAlertProps) =>
   );
 };
 
-// Formata preço em R$ 00,00
 const formatPreco = (preco?: number | null) => {
   const valor = typeof preco === 'number' && !isNaN(preco) ? preco : 0;
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
@@ -88,11 +87,9 @@ export default function AgendamentoScreen(): JSX.Element {
 
   const [servicos, setServicos] = useState<IServico[]>([]);
   const [servicoSelecionado, setServicoSelecionado] = useState<IServico | null>(null);
-
   const [date, setDate] = useState<string>('');
   const [horarios, setHorarios] = useState<IHorarioDisponivel[]>([]);
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertType, setAlertType] = useState<'success' | 'error' | 'info'>('info');
@@ -108,7 +105,6 @@ export default function AgendamentoScreen(): JSX.Element {
   };
   const minDate = getCurrentDate();
 
-  // Carrega serviços
   useEffect(() => {
     listarServicos()
       .then(raw =>
@@ -117,25 +113,49 @@ export default function AgendamentoScreen(): JSX.Element {
             id: s.id,
             nome: s.nome,
             preco: isNaN(Number(s.preco)) ? 0 : Number(s.preco),
-            duracao: s.duracao
+            duracao: s.duracao,
           }))
         )
       )
-      .catch(() => showAlert('error', 'Falha ao carregar serviços', 'error'));
+      .catch(() => showAlert('Erro', 'Falha ao carregar serviços', 'error'));
   }, []);
 
-  // Busca horários sempre que data ou serviço mudar
+  // Atualize a função dentro do useEffect
   useEffect(() => {
     if (date && servicoSelecionado) {
       setLoading(true);
-      buscarHorariosDisponiveis(date)
-        .then(resp => setHorarios(resp))
-        .catch(() => showAlert('error', 'Não foi possível carregar horários', 'error'))
-        .finally(() => setLoading(false));
+      buscarHorariosDisponiveis(date, parseInt(servicoSelecionado.duracao))
+        .then(resp => {
+          // Filtra horários passados se for hoje
+          const hoje = new Date().toISOString().split('T')[0];
+          if (date === hoje) {
+            const agora = new Date();
+            const horaAtual = agora.getHours();
+            const minutoAtual = agora.getMinutes();
+
+            const horariosFiltrados = resp.map(h => {
+              const [hora, minuto] = h.hora.split(':').map(Number);
+              if (hora < horaAtual || (hora === horaAtual && minuto < minutoAtual)) {
+                return { ...h, status: 'ocupado' as const }; // Adicionamos 'as const' aqui
+              }
+              return h;
+            });
+            setHorarios(horariosFiltrados);
+          } else {
+            setHorarios(resp);
+          }
+        })
+        .catch(() => showAlert('Erro', 'Não foi possível carregar horários', 'error'))
+        .finally(() => {
+          setLoading(false);
+          setHorarioSelecionado(null);
+        });
+    } else {
+      setHorarios([]);
+      setHorarioSelecionado(null);
     }
   }, [date, servicoSelecionado]);
 
-  // Confirma agendamento
   const handleConfirm = () => {
     if (!servicoSelecionado || !date || !horarioSelecionado) {
       setAlertType('info');
@@ -144,13 +164,13 @@ export default function AgendamentoScreen(): JSX.Element {
       setAlertVisible(true);
       return;
     }
-    const data: IAgendamentoCriar = {
+    const agendamentoData: IAgendamentoCriar = {
       servico_id: servicoSelecionado.id,
-      data: date,
+      data: date, // agora claro e sem conflito
       horario: horarioSelecionado,
-      usuario_id: 1
+      usuario_id: 1,
     };
-    criarAgendamento(data)
+    criarAgendamento(agendamentoData)
       .then(() => {
         setAlertType('success');
         setAlertTitle('Sucesso');
@@ -165,7 +185,7 @@ export default function AgendamentoScreen(): JSX.Element {
       });
   };
 
-  // Renderiza cada horário com status
+
   const renderHorario = ({ item }: { item: IHorarioDisponivel }) => {
     const disponivel = item.status === 'disponivel';
     const selecionado = item.hora === horarioSelecionado;
@@ -202,14 +222,14 @@ export default function AgendamentoScreen(): JSX.Element {
         data={servicos}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={i => i.id.toString()}
+        keyExtractor={(i) => i.id.toString()}
         contentContainerStyle={styles.servicosLista}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setServicoSelecionado(item)}
             style={[
               styles.servicoItem,
-              servicoSelecionado?.id === item.id && styles.servicoSelecionado
+              servicoSelecionado?.id === item.id && styles.servicoSelecionado,
             ]}
           >
             <Text style={styles.servicoNome}>{item.nome}</Text>
@@ -226,7 +246,7 @@ export default function AgendamentoScreen(): JSX.Element {
         theme={{
           selectedDayBackgroundColor: '#3A7CA5',
           todayTextColor: '#3A7CA5',
-          arrowColor: '#3A7CA5'
+          arrowColor: '#3A7CA5',
         }}
         style={styles.calendarioContainer}
       />
@@ -238,7 +258,7 @@ export default function AgendamentoScreen(): JSX.Element {
         <FlatList
           data={horarios}
           renderItem={renderHorario}
-          keyExtractor={i => i.hora}
+          keyExtractor={(i) => i.hora}
           horizontal
           contentContainerStyle={styles.horariosLista}
           showsHorizontalScrollIndicator={false}
@@ -248,7 +268,7 @@ export default function AgendamentoScreen(): JSX.Element {
       <TouchableOpacity
         style={[
           styles.botaoConfirmar,
-          (!servicoSelecionado || !date || !horarioSelecionado) && styles.botaoConfirmarDisabled
+          (!servicoSelecionado || !date || !horarioSelecionado) && styles.botaoConfirmarDisabled,
         ]}
         onPress={handleConfirm}
         disabled={!servicoSelecionado || !date || !horarioSelecionado}

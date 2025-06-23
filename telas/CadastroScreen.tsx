@@ -1,4 +1,3 @@
-// src/telas/CadastroScreen.tsx
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -18,17 +17,47 @@ export default function CadastroScreen({ navigation }: { navigation: CadastroNav
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleCadastro = async () => {
+    // Validação de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      showAlert('Erro', 'Por favor, insira um email válido', 'error');
+      return;
+    }
+
+    // Validação de telefone
+    if (telefone && telefone.length < 10) {
+      showAlert('Erro', 'Telefone deve ter pelo menos 10 dígitos', 'error');
+      return;
+    }
+
+    // Validação de senha
+    if (senha.length < 6) {
+      showAlert('Erro', 'A senha deve ter pelo menos 6 caracteres', 'error');
+      return;
+    }
+
+    if (!/[A-Z]/.test(senha)) {
+      showAlert('Erro', 'A senha deve conter pelo menos uma letra maiúscula', 'error');
+      return;
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(senha)) {
+      showAlert('Erro', 'A senha deve conter pelo menos um caractere especial', 'error');
+      return;
+    }
+
     if (senha !== confirmarSenha) {
       showAlert('Erro', 'Senhas não coincidem', 'error');
       return;
     }
+
     try {
       setLoading(true);
       await criarUsuario({ nome, email, senha, telefone });
       showAlert('Sucesso', 'Cadastro realizado!', 'success');
       navigation.navigate('Login');
     } catch (e: any) {
-      showAlert('Erro', e.message, 'error');
+      showAlert('Erro', e.message || 'Erro ao cadastrar', 'error');
     } finally {
       setLoading(false);
     }
@@ -48,13 +77,15 @@ export default function CadastroScreen({ navigation }: { navigation: CadastroNav
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        autoCapitalize="none"
       />
       <TextInput
         style={styles.input}
         placeholder="Telefone"
         keyboardType="phone-pad"
         value={telefone}
-        onChangeText={setTelefone}
+        onChangeText={(text) => setTelefone(text.replace(/[^0-9]/g, ''))}
+        maxLength={11}
       />
       <TextInput
         style={styles.input}
@@ -62,6 +93,7 @@ export default function CadastroScreen({ navigation }: { navigation: CadastroNav
         secureTextEntry
         value={senha}
         onChangeText={setSenha}
+        placeholderTextColor="#999"
       />
       <TextInput
         style={styles.input}
@@ -69,6 +101,7 @@ export default function CadastroScreen({ navigation }: { navigation: CadastroNav
         secureTextEntry
         value={confirmarSenha}
         onChangeText={setConfirmarSenha}
+        placeholderTextColor="#999"
       />
 
       <TouchableOpacity
@@ -108,7 +141,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
-    backgroundColor: '#2E86AB',      // mesmo azul do LoginScreen
+    backgroundColor: '#2E86AB',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -123,7 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   link: {
-    color: '#2E86AB',               // mesmo azul do LoginScreen
+    color: '#2E86AB',
     textAlign: 'center',
     fontSize: 14,
   },

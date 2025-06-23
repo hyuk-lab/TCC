@@ -93,6 +93,9 @@ export interface IAgendamento {
   data: string;
   horario: string;
   status: string;
+  carro_nome: string;
+  carro_modelo: string;
+  carro_placa: string;
 }
 
 export async function listarMeusAgendamentos(): Promise<IAgendamento[]> {
@@ -102,4 +105,12 @@ export async function listarMeusAgendamentos(): Promise<IAgendamento[]> {
 
 export async function cancelarAgendamento(id: number): Promise<void> {
   await api.delete(`/agendamentos/${id}`);
+}
+
+export async function atualizarInformacoesCarro(id: number, carro: {
+  carro_nome: string;
+  carro_modelo: string;
+  carro_placa: string;
+}) {
+  await api.put(`/agendamentos/${id}/carro`, carro);
 }

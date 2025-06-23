@@ -1,4 +1,3 @@
-// server.ts
 import dotenv from 'dotenv';
 dotenv.config();
 import { OAuth2Client } from 'google-auth-library';
@@ -20,7 +19,6 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Pool de conexões
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -40,7 +38,6 @@ declare module 'express-serve-static-core' {
   }
 }
 
-// Inicializa BD
 async function initializeDatabase(): Promise<void> {
   const tmp = await mysql.createConnection({
     host: process.env.DB_HOST,
@@ -52,31 +49,38 @@ async function initializeDatabase(): Promise<void> {
 
   const tableQueries = [
     `CREATE TABLE IF NOT EXISTS usuarios (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       nome VARCHAR(100) NOT NULL,
-       email VARCHAR(100) UNIQUE NOT NULL,
-       senha VARCHAR(255) NOT NULL,
-       telefone VARCHAR(20),
-       tipo ENUM('user','admin') DEFAULT 'user',
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-     )`,
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      senha VARCHAR(255),
+      telefone VARCHAR(20),
+      tipo ENUM('user', 'admin') DEFAULT 'user',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS servicos (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       nome VARCHAR(100) NOT NULL,
-       preco DECIMAL(10,2) NOT NULL,
-       duracao VARCHAR(50) NOT NULL
-     )`,
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nome VARCHAR(100) NOT NULL,
+      preco DECIMAL(10,2) NOT NULL,
+      duracao VARCHAR(50) NOT NULL,
+      tipo ENUM('fixo', 'promocao') DEFAULT 'fixo',
+      motivo_promocao VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS agendamentos (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       usuario_id INT NOT NULL,
-       servico_id INT NOT NULL,
-       data DATE NOT NULL,
-       horario TIME NOT NULL,
-       status ENUM('pendente','confirmado','cancelado') DEFAULT 'pendente',
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-       FOREIGN KEY (servico_id) REFERENCES servicos(id)
-     )`,
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      usuario_id INT NOT NULL,
+      usuario_nome VARCHAR(100) NOT NULL,
+      servico_id INT NOT NULL,
+      data DATE NOT NULL,
+      horario TIME NOT NULL,
+      status ENUM('pendente', 'confirmado', 'cancelado') DEFAULT 'pendente',
+      carro_nome VARCHAR(100),
+      carro_modelo VARCHAR(100),
+      carro_placa VARCHAR(10),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+      FOREIGN KEY (servico_id) REFERENCES servicos(id)
+    )`,
   ];
 
   for (const q of tableQueries) {
@@ -99,7 +103,6 @@ async function initializeDatabase(): Promise<void> {
   }
 }
 
-// Middleware de autenticação
 function authenticate(req: Request, res: Response, next: NextFunction): void {
   const auth = req.headers.authorization;
   if (!auth) {
@@ -116,7 +119,6 @@ function authenticate(req: Request, res: Response, next: NextFunction): void {
   }
 }
 
-// ROTAS
 app.post('/login', async (req: Request, res: Response): Promise<void> => {
   const { email, senha } = req.body;
   if (!email || !senha) {
@@ -171,6 +173,11 @@ app.get('/horarios-disponiveis', async (req: Request, res: Response): Promise<vo
     return;
   }
 
+  const hoje = new Date().toISOString().split('T')[0];
+  const agora = new Date();
+  const horaAtual = agora.getHours();
+  const minutoAtual = agora.getMinutes();
+
   function toMinutes(hm: string): number {
     const [h, m] = hm.split(':').map(Number);
     return h * 60 + m;
@@ -182,11 +189,12 @@ app.get('/horarios-disponiveis', async (req: Request, res: Response): Promise<vo
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
 
+  // Modificado para ignorar agendamentos cancelados
   const [rows] = await pool.query<mysql.RowDataPacket[]>(
     `SELECT TIME_FORMAT(horario, '%H:%i') AS hora, s.duracao
-       FROM agendamentos a
-       JOIN servicos s ON a.servico_id = s.id
-      WHERE a.data = ? AND a.status != 'cancelado'`,
+     FROM agendamentos a
+     JOIN servicos s ON a.servico_id = s.id
+     WHERE a.data = ? AND a.status = 'confirmado'`, // Apenas agendamentos confirmados
     [data]
   );
 
@@ -202,6 +210,19 @@ app.get('/horarios-disponiveis', async (req: Request, res: Response): Promise<vo
   const slots: { hora: string; status: 'disponivel' | 'ocupado' }[] = [];
   for (let t = 8 * 60; t + duracao <= 18 * 60; t += 30) {
     const fim = t + duracao;
+
+    // Verifica se é hoje e se o horário já passou
+    if (data === hoje) {
+      const horaSlot = Math.floor(t / 60);
+      const minutoSlot = t % 60;
+
+      if (horaSlot < horaAtual || (horaSlot === horaAtual && minutoSlot < minutoAtual)) {
+        slots.push({ hora: toHM(t), status: 'ocupado' });
+        continue;
+      }
+    }
+
+    // Verifica conflitos com outros agendamentos (apenas confirmados)
     const conflito = ocupados.some(([s, e]) => !(e <= t || s >= fim));
     slots.push({ hora: toHM(t), status: conflito ? 'ocupado' : 'disponivel' });
   }
@@ -216,6 +237,13 @@ app.post('/agendamentos', authenticate, async (req: Request, res: Response): Pro
     return;
   }
 
+  const [userRows] = await pool.query('SELECT nome FROM usuarios WHERE id = ?', [req.userId]);
+  const user = (userRows as any[])[0];
+  if (!user) {
+    res.status(404).json({ error: 'Usuário não encontrado' });
+    return;
+  }
+
   const [ex] = await pool.query(
     'SELECT id FROM agendamentos WHERE data = ? AND horario = ? AND status != "cancelado"',
     [data, horario]
@@ -226,8 +254,8 @@ app.post('/agendamentos', authenticate, async (req: Request, res: Response): Pro
   }
 
   await pool.query(
-    'INSERT INTO agendamentos (usuario_id,servico_id,data,horario,status) VALUES (?,?,?,?,?)',
-    [req.userId, servico_id, data, horario, 'pendente']
+    'INSERT INTO agendamentos (usuario_id, usuario_nome, servico_id, data, horario, status) VALUES (?,?,?,?,?,?)',
+    [req.userId, user.nome, servico_id, data, horario, 'pendente']
   );
   res.status(201).json({ message: 'Agendamento criado' });
 });
@@ -246,16 +274,36 @@ app.get('/agendamentos/meus', authenticate, async (req: Request, res: Response):
 
 app.delete('/agendamentos/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   const id = +req.params.id;
-  await pool.query('UPDATE agendamentos SET status = "cancelado" WHERE id = ?', [id]);
+
+  // Verifica se o agendamento existe e pertence ao usuário
+  const [agendamento] = await pool.query(
+    'SELECT * FROM agendamentos WHERE id = ? AND usuario_id = ?',
+    [id, req.userId]
+  );
+
+  if ((agendamento as any[]).length === 0) {
+    res.status(404).json({ error: 'Agendamento não encontrado' });
+    return;
+  }
+
+  await pool.query(
+    'UPDATE agendamentos SET status = "cancelado" WHERE id = ?',
+    [id]
+  );
+
   res.json({ message: 'Agendamento cancelado' });
 });
 
-initializeDatabase()
-  .then(() => app.listen(port, () => console.log(`Servidor rodando na porta ${port}`)))
-  .catch(err => {
-    console.error('Erro ao inicializar banco:', err);
-    process.exit(1);
-  });
+app.put('/agendamentos/:id/carro', authenticate, async (req: Request, res: Response): Promise<void> => {
+  const id = +req.params.id;
+  const { carro_nome, carro_modelo, carro_placa } = req.body;
+
+  await pool.query(
+    'UPDATE agendamentos SET carro_nome = ?, carro_modelo = ?, carro_placa = ? WHERE id = ? AND usuario_id = ?',
+    [carro_nome, carro_modelo, carro_placa, id, req.userId]
+  );
+  res.json({ message: 'Informações do veículo atualizadas' });
+});
 
 app.post('/login-google', async (req: Request, res: Response): Promise<void> => {
   const { token } = req.body;
@@ -275,7 +323,6 @@ app.post('/login-google', async (req: Request, res: Response): Promise<void> => 
     const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [payload.email]);
     let user = (rows as any[])[0];
 
-    // Se usuário não existe, cria um novo
     if (!user) {
       await pool.query(
         'INSERT INTO usuarios (nome, email) VALUES (?, ?)',
@@ -292,3 +339,10 @@ app.post('/login-google', async (req: Request, res: Response): Promise<void> => 
     res.status(401).json({ error: 'Falha na autenticação com Google' });
   }
 });
+
+initializeDatabase()
+  .then(() => app.listen(port, () => console.log(`Servidor rodando na porta ${port}`)))
+  .catch(err => {
+    console.error('Erro ao inicializar banco:', err);
+    process.exit(1);
+  });
