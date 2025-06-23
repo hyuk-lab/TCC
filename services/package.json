@@ -1,0 +1,27 @@
+{
+  "name": "services",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^24.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@react-native-google-signin/google-signin": "^14.0.1",
+    "expo-auth-session": "^6.2.0",
+    "expo-web-browser": "^14.1.6",
+    "google-auth-library": "^10.1.0"
+  },
+  "description": ""
+}
